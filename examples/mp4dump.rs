@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -44,14 +45,17 @@ fn get_boxes(file: File) -> Result<Vec<Box>> {
     let reader = BufReader::new(file);
     let mp4 = mp4::Mp4Reader::read_header(reader, size)?;
 
+    let ftyp = mp4.ftyp.as_ref().unwrap();
+    let moov = mp4.moov.as_ref().unwrap();
+
     // collect known boxes
     let mut boxes = vec![
-        build_box(&mp4.ftyp),
-        build_box(&mp4.moov),
-        build_box(&mp4.moov.mvhd),
+        build_box(ftyp),
+        build_box(moov),
+        build_box(&moov.mvhd),
     ];
 
-    if let Some(ref mvex) = &mp4.moov.mvex {
+    if let Some(ref mvex) = &moov.mvex {
         boxes.push(build_box(mvex));
         if let Some(mehd) = &mvex.mehd {
             boxes.push(build_box(mehd));

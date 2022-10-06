@@ -13,7 +13,7 @@ fn main() {
     let f = File::open(filename).unwrap();
     let mp4 = mp4::read_mp4(f).unwrap();
 
-    println!("Major Brand: {}", mp4.major_brand());
+    println!("Major Brand: {}", mp4.major_brand().unwrap());
 
     for track in mp4.tracks().values() {
         println!(

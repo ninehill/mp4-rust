@@ -7,8 +7,8 @@ use crate::*;
 #[derive(Debug)]
 pub struct Mp4Reader<R> {
     reader: R,
-    pub ftyp: FtypBox,
-    pub moov: MoovBox,
+    pub ftyp: Option<FtypBox>,
+    pub moov: Option<MoovBox>,
     pub moofs: Vec<MoofBox>,
     pub emsgs: Vec<EmsgBox>,
 
@@ -110,8 +110,8 @@ impl<R: Read + Seek> Mp4Reader<R> {
 
         Ok(Mp4Reader {
             reader,
-            ftyp: ftyp.unwrap(),
-            moov: moov.unwrap(),
+            ftyp,
+            moov,
             moofs,
             emsgs,
             size,
@@ -123,24 +123,39 @@ impl<R: Read + Seek> Mp4Reader<R> {
         self.size
     }
 
-    pub fn major_brand(&self) -> &FourCC {
-        &self.ftyp.major_brand
+    pub fn major_brand(&self) -> Option<&FourCC> {
+        match &self.ftyp {
+            Some(ftyp) => Some(&ftyp.major_brand),
+            None => None
+        }
     }
 
-    pub fn minor_version(&self) -> u32 {
-        self.ftyp.minor_version
+    pub fn minor_version(&self) -> Option<u32> {
+        match &self.ftyp {
+            Some(ftyp) => Some(ftyp.minor_version),
+            None => None
+        }
     }
 
-    pub fn compatible_brands(&self) -> &[FourCC] {
-        &self.ftyp.compatible_brands
+    pub fn compatible_brands(&self) -> Option<&[FourCC]> {
+        match &self.ftyp {
+            Some(ftyp) => Some(&ftyp.compatible_brands),
+            None => None
+        }
     }
 
-    pub fn duration(&self) -> Duration {
-        Duration::from_millis(self.moov.mvhd.duration * 1000 / self.moov.mvhd.timescale as u64)
+    pub fn duration(&self) -> Option<Duration> {
+        match &self.moov {
+            Some(moov) => Some(Duration::from_millis(moov.mvhd.duration * 1000 / moov.mvhd.timescale as u64)),
+            None => None
+        }
     }
 
-    pub fn timescale(&self) -> u32 {
-        self.moov.mvhd.timescale
+    pub fn timescale(&self) -> Option<u32> {
+        match &self.moov {
+            Some(moov) => Some(moov.mvhd.timescale),
+            None => None
+        }
     }
 
     pub fn is_fragmented(&self) -> bool {
@@ -170,9 +185,16 @@ impl<R: Read + Seek> Mp4Reader<R> {
 
 impl<R> Mp4Reader<R> {
     pub fn metadata(&self) -> impl Metadata<'_> {
-        self.moov
-            .udta
-            .as_ref()
-            .and_then(|udta| udta.meta.as_ref().and_then(|meta| meta.ilst.as_ref()))
+        match &self.moov {
+            Some(moov) => {
+             moov
+                .udta
+                .as_ref()
+                .and_then(|udta| udta.meta.as_ref().and_then(|meta| meta.ilst.as_ref()))
+            }
+            None => {
+                None
+            }
+        }
     }
 }

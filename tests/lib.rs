@@ -13,7 +13,7 @@ fn test_read_mp4() {
     assert_eq!(2591, mp4.size());
 
     // ftyp.
-    assert_eq!(4, mp4.compatible_brands().len());
+    assert_eq!(4, mp4.compatible_brands().expect("missing ftyp box?").len());
 
     // Check compatible_brands.
     let brands = vec![
@@ -24,12 +24,12 @@ fn test_read_mp4() {
     ];
 
     for b in brands {
-        let t = mp4.compatible_brands().iter().any(|x| x.to_string() == b);
+        let t = mp4.compatible_brands().expect("missing ftyp box?").iter().any(|x| x.to_string() == b);
         assert!(t);
     }
 
-    assert_eq!(mp4.duration(), Duration::from_millis(62));
-    assert_eq!(mp4.timescale(), 1000);
+    assert_eq!(mp4.duration().expect("missing moov box?"), Duration::from_millis(62));
+    assert_eq!(mp4.timescale().expect("missing moov box?"), 1000);
     assert_eq!(mp4.tracks().len(), 2);
 
     let sample_count = mp4.sample_count(1).unwrap();
