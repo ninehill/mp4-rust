@@ -94,9 +94,7 @@ impl<R: Read + Seek> Mp4Reader<R> {
                     if let Some(track) = tracks.get_mut(&track_id) {
                         track.default_sample_duration = default_sample_duration;
                         track.trafs.push(traf.clone())
-                    } else {
-                        return Err(Error::TrakNotFound(track_id));
-                    }
+                    } 
                 }
             }
         }
