@@ -66,13 +66,6 @@ impl<R: Read + Seek> Mp4Reader<R> {
             current = reader.seek(SeekFrom::Current(0))?;
         }
 
-        if ftyp.is_none() {
-            return Err(Error::BoxNotFound(BoxType::FtypBox));
-        }
-        if moov.is_none() {
-            return Err(Error::BoxNotFound(BoxType::MoovBox));
-        }
-
         let size = current - start;
         let mut tracks = if let Some(ref moov) = moov {
             if moov.traks.iter().any(|trak| trak.tkhd.track_id == 0) {

@@ -28,19 +28,19 @@ fn info<P: AsRef<Path>>(filename: &P) -> Result<()> {
 
     println!("File:");
     println!("  file size:          {}", mp4.size());
-    println!("  major_brand:        {}", mp4.major_brand());
+    println!("  major_brand:        {}", mp4.major_brand().as_ref().unwrap());
     let mut compatible_brands = String::new();
-    for brand in mp4.compatible_brands().iter() {
+    for brand in mp4.compatible_brands().unwrap().iter() {
         compatible_brands.push_str(&brand.to_string());
         compatible_brands.push(' ');
     }
     println!("  compatible_brands:  {}\n", compatible_brands);
 
     println!("Movie:");
-    println!("  version:        {}", mp4.moov.mvhd.version);
+    println!("  version:        {}", mp4.moov.as_ref().unwrap().mvhd.version);
     println!(
         "  creation time:  {}",
-        creation_time(mp4.moov.mvhd.creation_time)
+        creation_time(mp4.moov.as_ref().unwrap().mvhd.creation_time)
     );
     println!("  duration:       {:?}", mp4.duration());
     println!("  fragments:      {:?}", mp4.is_fragmented());
