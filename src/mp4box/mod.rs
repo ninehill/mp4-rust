@@ -73,6 +73,7 @@ pub(crate) mod ftyp;
 pub(crate) mod hdlr;
 pub(crate) mod hev1;
 pub(crate) mod ilst;
+pub(crate) mod mdat;
 pub(crate) mod mdhd;
 pub(crate) mod mdia;
 pub(crate) mod mehd;
@@ -104,10 +105,12 @@ pub(crate) mod vmhd;
 pub(crate) mod vp09;
 pub(crate) mod vpcc;
 
+
 pub use emsg::EmsgBox;
 pub use ftyp::FtypBox;
 pub use moof::MoofBox;
 pub use moov::MoovBox;
+pub use mdat::MdatBox;
 
 pub const HEADER_SIZE: u64 = 8;
 // const HEADER_LARGE_SIZE: u64 = 16;

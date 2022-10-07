@@ -9,6 +9,7 @@ pub struct Mp4Reader<R> {
     reader: R,
     pub ftyp: Option<FtypBox>,
     pub moov: Option<MoovBox>,
+    pub media_chunks: Vec<MediaChunk>,
     pub moofs: Vec<MoofBox>,
     pub emsgs: Vec<EmsgBox>,
 
@@ -22,8 +23,11 @@ impl<R: Read + Seek> Mp4Reader<R> {
 
         let mut ftyp = None;
         let mut moov = None;
+        let mut media_chunks = Vec::new();
         let mut moofs = Vec::new();
         let mut emsgs = Vec::new();
+
+        let mut current_chunk = MediaChunk::new();
 
         let mut current = start;
         while current < size {
@@ -45,18 +49,34 @@ impl<R: Read + Seek> Mp4Reader<R> {
                     skip_box(&mut reader, s)?;
                 }
                 BoxType::MdatBox => {
-                    skip_box(&mut reader, s)?;
+                    if ftyp.is_some() {
+                        skip_box(&mut reader, s)?;
+                    } else {
+                        let mdat = MdatBox::read_box(&mut reader, s)?;
+                        current_chunk.children.push(MediaChunkBox::Mdat(mdat));
+                        //An mdat marks the end of a chunk
+                        media_chunks.push(current_chunk);
+                        current_chunk = MediaChunk::new();
+                    }
                 }
                 BoxType::MoovBox => {
                     moov = Some(MoovBox::read_box(&mut reader, s)?);
                 }
                 BoxType::MoofBox => {
                     let moof = MoofBox::read_box(&mut reader, s)?;
-                    moofs.push(moof);
+                    if ftyp.is_some() {
+                        moofs.push(moof);
+                    } else {
+                        current_chunk.children.push(MediaChunkBox::Moof(moof));
+                    }
                 }
                 BoxType::EmsgBox => {
                     let emsg = EmsgBox::read_box(&mut reader, s)?;
-                    emsgs.push(emsg);
+                    if ftyp.is_some() {
+                        emsgs.push(emsg);
+                    } else {
+                        current_chunk.children.push(MediaChunkBox::Emsg(emsg));
+                    }
                 }
                 _ => {
                     // XXX warn!()
@@ -64,6 +84,10 @@ impl<R: Read + Seek> Mp4Reader<R> {
                 }
             }
             current = reader.seek(SeekFrom::Current(0))?;
+        }
+
+        if current_chunk.children.len() > 0 {
+            media_chunks.push(current_chunk);
         }
 
         let size = current - start;
@@ -94,7 +118,7 @@ impl<R: Read + Seek> Mp4Reader<R> {
                     if let Some(track) = tracks.get_mut(&track_id) {
                         track.default_sample_duration = default_sample_duration;
                         track.trafs.push(traf.clone())
-                    } 
+                    }
                 }
             }
         }
@@ -103,6 +127,7 @@ impl<R: Read + Seek> Mp4Reader<R> {
             reader,
             ftyp,
             moov,
+            media_chunks,
             moofs,
             emsgs,
             size,
@@ -117,35 +142,37 @@ impl<R: Read + Seek> Mp4Reader<R> {
     pub fn major_brand(&self) -> Option<&FourCC> {
         match &self.ftyp {
             Some(ftyp) => Some(&ftyp.major_brand),
-            None => None
+            None => None,
         }
     }
 
     pub fn minor_version(&self) -> Option<u32> {
         match &self.ftyp {
             Some(ftyp) => Some(ftyp.minor_version),
-            None => None
+            None => None,
         }
     }
 
     pub fn compatible_brands(&self) -> Option<&[FourCC]> {
         match &self.ftyp {
             Some(ftyp) => Some(&ftyp.compatible_brands),
-            None => None
+            None => None,
         }
     }
 
     pub fn duration(&self) -> Option<Duration> {
         match &self.moov {
-            Some(moov) => Some(Duration::from_millis(moov.mvhd.duration * 1000 / moov.mvhd.timescale as u64)),
-            None => None
+            Some(moov) => Some(Duration::from_millis(
+                moov.mvhd.duration * 1000 / moov.mvhd.timescale as u64,
+            )),
+            None => None,
         }
     }
 
     pub fn timescale(&self) -> Option<u32> {
         match &self.moov {
             Some(moov) => Some(moov.mvhd.timescale),
-            None => None
+            None => None,
         }
     }
 
@@ -177,15 +204,11 @@ impl<R: Read + Seek> Mp4Reader<R> {
 impl<R> Mp4Reader<R> {
     pub fn metadata(&self) -> impl Metadata<'_> {
         match &self.moov {
-            Some(moov) => {
-             moov
+            Some(moov) => moov
                 .udta
                 .as_ref()
-                .and_then(|udta| udta.meta.as_ref().and_then(|meta| meta.ilst.as_ref()))
-            }
-            None => {
-                None
-            }
+                .and_then(|udta| udta.meta.as_ref().and_then(|meta| meta.ilst.as_ref())),
+            None => None,
         }
     }
 }

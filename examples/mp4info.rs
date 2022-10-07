@@ -26,6 +26,17 @@ fn info<P: AsRef<Path>>(filename: &P) -> Result<()> {
 
     let mp4 = mp4::Mp4Reader::read_header(reader, size)?;
 
+    for chunk in mp4.media_chunks.iter() {
+        println!("Media Chunk");
+        for c in chunk.children.iter() {
+            match c {
+                mp4::MediaChunkBox::Emsg(_) => println!("  emsg"),
+                mp4::MediaChunkBox::Moof(_) => println!("  moof"),
+                mp4::MediaChunkBox::Mdat(_) => println!("  mdat"),
+            }
+        }
+    }
+
     println!("File:");
     println!("  file size:          {}", mp4.size());
     println!("  major_brand:        {}", mp4.major_brand().as_ref().unwrap());
