@@ -46,7 +46,7 @@
 //!         mehd
 //!         trex
 //! emsg
-//! moof
+//! mooftes
 //!     mfhd
 //!     traf
 //!         tfhd
@@ -93,6 +93,7 @@ pub(crate) mod stsd;
 pub(crate) mod stss;
 pub(crate) mod stsz;
 pub(crate) mod stts;
+pub(crate) mod tfdt;
 pub(crate) mod tfhd;
 pub(crate) mod tkhd;
 pub(crate) mod traf;
@@ -105,12 +106,11 @@ pub(crate) mod vmhd;
 pub(crate) mod vp09;
 pub(crate) mod vpcc;
 
-
 pub use emsg::EmsgBox;
 pub use ftyp::FtypBox;
+pub use mdat::MdatBox;
 pub use moof::MoofBox;
 pub use moov::MoovBox;
-pub use mdat::MdatBox;
 
 pub const HEADER_SIZE: u64 = 8;
 // const HEADER_LARGE_SIZE: u64 = 16;
@@ -156,6 +156,7 @@ boxtype! {
     TrexBox => 0x74726578,
     EmsgBox => 0x656d7367,
     MoofBox => 0x6d6f6f66,
+    TfdtBox => 0x74666474,
     TkhdBox => 0x746b6864,
     TfhdBox => 0x74666864,
     EdtsBox => 0x65647473,
