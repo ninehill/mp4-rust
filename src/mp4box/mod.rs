@@ -99,13 +99,13 @@ pub(crate) mod tkhd;
 pub(crate) mod traf;
 pub(crate) mod trak;
 pub(crate) mod trex;
-pub(crate) mod trun;
 pub(crate) mod tx3g;
 pub(crate) mod udta;
 pub(crate) mod vmhd;
 pub(crate) mod vp09;
 pub(crate) mod vpcc;
 
+pub mod trun;
 pub use emsg::EmsgBox;
 pub use ftyp::FtypBox;
 pub use mdat::MdatBox;
