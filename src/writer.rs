@@ -1,5 +1,6 @@
 use byteorder::{BigEndian, WriteBytesExt};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{copy, Seek, SeekFrom, Write};
+use std::time::SystemTime;
 
 use crate::mp4box::*;
 use crate::track::Mp4TrackWriter;
@@ -20,6 +21,7 @@ pub struct Mp4Writer<W> {
     mdat_pos: u64,
     timescale: u32,
     duration: u64,
+    emsg_buffer: (String, Option<File>),
 }
 
 impl<W> Mp4Writer<W> {
@@ -72,6 +74,15 @@ impl<W: Write + Seek> Mp4Writer<W> {
         let mdat_pos = writer.seek(SeekFrom::Current(0))?;
         BoxHeader::new(BoxType::MdatBox, HEADER_SIZE).write(&mut writer)?;
 
+        let emsg_path = format!(
+            "emsg-{}.tmp",
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        );
+        let emsg_file = File::create(&emsg_path)?;
+
         let tracks = Vec::new();
         let timescale = config.timescale;
         let duration = 0;
@@ -81,6 +92,7 @@ impl<W: Write + Seek> Mp4Writer<W> {
             mdat_pos,
             timescale,
             duration,
+            emsg_buffer: (emsg_path, Some(emsg_file)),
         })
     }
 
@@ -94,6 +106,17 @@ impl<W: Write + Seek> Mp4Writer<W> {
     fn update_durations(&mut self, track_dur: u64) {
         if track_dur > self.duration {
             self.duration = track_dur;
+        }
+    }
+
+    pub fn write_emsg(&mut self, b: &EmsgBox) -> Result<()> {
+        if let (_, Some(ref mut f)) = &mut self.emsg_buffer {
+            if let Err(e) = b.write_box(f) {
+                eprintln!("failed to write emsg box to temp file: {e:?}");
+            }
+            Ok(())
+        } else {
+            Err(Error::InvalidData("emsg temp file not available"))
         }
     }
 
@@ -116,7 +139,7 @@ impl<W: Write + Seek> Mp4Writer<W> {
     fn update_mdat_size(&mut self) -> Result<()> {
         let mdat_end = self.writer.seek(SeekFrom::Current(0))?;
         let mdat_size = mdat_end - self.mdat_pos;
-        if mdat_size > std::u32::MAX as u64 {
+        if mdat_size > u32::MAX as u64 {
             return Err(Error::InvalidData("mdat size too large"));
         }
         self.writer.seek(SeekFrom::Start(self.mdat_pos))?;
@@ -132,6 +155,17 @@ impl<W: Write + Seek> Mp4Writer<W> {
             moov.traks.push(track.write_end(&mut self.writer)?);
         }
         self.update_mdat_size()?;
+
+        if let Some(f) = &mut self.emsg_buffer.1.take() {
+            f.flush()?;
+        }
+
+        let (emsg_path, _) = &mut self.emsg_buffer;
+        let mut reader = File::open(&emsg_path)?;
+        if let Err(e) = copy(&mut reader, &mut self.writer) {
+            eprintln!("failed to copy emsg boxes from temp file: {e:?}");
+        }
+        std::fs::remove_file(&emsg_path)?;
 
         moov.mvhd.timescale = self.timescale;
         moov.mvhd.duration = self.duration;
